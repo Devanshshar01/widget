@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786660105787,
+      "tag": "0000_sharp_revanche",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786686201609,
+      "tag": "0001_thankful_namora",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787006061199,
+      "tag": "0002_groovy_shatterstar",
+      "breakpoints": true
+    }
+  ]
+}

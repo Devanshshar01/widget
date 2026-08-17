@@ -1,0 +1,14 @@
+{
+  "name": "@couple-space/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./canvas": "./src/canvas.ts",
+    "./presence": "./src/presence.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}
