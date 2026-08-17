@@ -47,33 +47,80 @@ export interface RealtimeSession {
   readonly roomId: string;
   readonly slot: "A" | "B";
   readonly connectionState: ConnectionState;
+  readonly authenticated: boolean;
 }
 
-export function useRealtime(): RealtimeSession | null {
+export function useRealtime(
+  externalMessageHandler?: (
+    message: ServerMessage,
+    client: RealtimeClient
+  ) => void
+): RealtimeSession | null {
   const clientRef =
-    useRef<CoupleSpaceRealtimeClient | null>(
-      null
-    );
+    useRef<CoupleSpaceRealtimeClient | null>(null);
+
+  const authRef =
+    useRef<RealtimeAuthResponse | null>(null);
 
   const [session, setSession] =
-    useState<RealtimeSession | null>(
-      null
-    );
+    useState<RealtimeSession | null>(null);
 
   const [connectionState, setConnectionState] =
-    useState<ConnectionState>(
-      "connecting"
-    );
+    useState<ConnectionState>("connecting");
+
+  const [authenticated, setAuthenticated] =
+    useState(false);
 
   const handleMessage =
     useCallback(
-      (message: ServerMessage) => {
-        console.log(
-          "[REALTIME]",
-          message
+      (
+        message: ServerMessage
+      ) => {
+        const client =
+          clientRef.current;
+
+        if (!client) {
+          return;
+        }
+
+        const auth =
+          authRef.current;
+
+        if (
+          message.type === "WELCOME" &&
+          auth
+        ) {
+          client.send({
+            type: "AUTHENTICATE",
+            protocolVersion: 1,
+            roomId:
+              auth.membership.spaceId,
+            userId:
+              auth.user.id,
+            authenticationToken:
+              auth.authenticationToken,
+            timestamp:
+              Date.now()
+          });
+        }
+
+        if (
+          message.type ===
+          "AUTHENTICATION_RESULT"
+        ) {
+          setAuthenticated(
+            message.authenticated
+          );
+        }
+
+        externalMessageHandler?.(
+          message,
+          client
         );
       },
-      []
+      [
+        externalMessageHandler
+      ]
     );
 
   useEffect(() => {
@@ -91,7 +138,7 @@ export function useRealtime(): RealtimeSession | null {
 
         if (!response.ok) {
           throw new Error(
-            "Realtime authentication failed."
+            "Realtime authentication endpoint failed."
           );
         }
 
@@ -106,9 +153,13 @@ export function useRealtime(): RealtimeSession | null {
           return;
         }
 
+        authRef.current =
+          auth;
+
         const realtimeUrl =
-          process.env
-            ["NEXT_PUBLIC_REALTIME_URL"];
+          process.env[
+            "NEXT_PUBLIC_REALTIME_URL"
+          ];
 
         if (!realtimeUrl) {
           throw new Error(
@@ -141,7 +192,7 @@ export function useRealtime(): RealtimeSession | null {
             onReconnect:
               (attempt) => {
                 console.log(
-                  "[REALTIME] reconnect attempt:",
+                  "[REALTIME] reconnect:",
                   attempt
                 );
               }
@@ -150,20 +201,23 @@ export function useRealtime(): RealtimeSession | null {
         clientRef.current =
           client;
 
+        if (cancelled) {
+          client.disconnect();
+          return;
+        }
+
         setSession({
           client,
-
           userId:
             auth.user.id,
-
           roomId:
             auth.membership.spaceId,
-
           slot:
             auth.membership.slot,
-
           connectionState:
-            "connecting"
+            "connecting",
+          authenticated:
+            false
         });
 
         client.connect();
@@ -185,9 +239,11 @@ export function useRealtime(): RealtimeSession | null {
       clientRef.current =
         null;
 
-      setSession(
-        null
-      );
+      authRef.current =
+        null;
+
+      setSession(null);
+      setAuthenticated(false);
     };
   }, [
     handleMessage
@@ -199,8 +255,7 @@ export function useRealtime(): RealtimeSession | null {
 
   return {
     ...session,
-
-    connectionState
+    connectionState,
+    authenticated
   };
 }
-
